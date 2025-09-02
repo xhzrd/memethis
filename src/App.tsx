@@ -107,7 +107,7 @@ export class AppComponent extends Component<PropsWithChildren & { children?: Rea
         const blob = await res.blob();
         const uint8Array = new Uint8Array(await blob.arrayBuffer());
 
-				await ffmpeg?.writeFile('input.png', uint8Array);
+		await ffmpeg?.writeFile('input.png', uint8Array);
 
 		// first pass: downscale to 1/3, then back to original
 		await ffmpeg?.exec([
@@ -120,6 +120,14 @@ export class AppComponent extends Component<PropsWithChildren & { children?: Rea
 		// second pass: repeat lightly for extra artifacting
 		await ffmpeg?.exec([
 			'-i', 'tmp1.jpg',
+			'-vf', 'scale=iw/3:ih/3,scale=iw*3:ih*3,format=yuv420p',
+			'-q:v', '40',
+			'tmp2.jpg',
+		]);
+
+		// third pass: repeat lightly for extra artifacting
+		await ffmpeg?.exec([
+			'-i', 'tmp2.jpg',
 			'-vf', 'scale=iw/3:ih/3,scale=iw*3:ih*3,format=yuv420p',
 			'-q:v', '40',
 			this.currentFILEName,
@@ -141,6 +149,7 @@ export class AppComponent extends Component<PropsWithChildren & { children?: Rea
 
         await ffmpeg?.deleteFile('input.png');
         await ffmpeg?.deleteFile('tmp1.jpg');
+        await ffmpeg?.deleteFile('tmp2.jpg');
 
         this.setTypedState('finalResult', url);
         this.setTypedState('processing', false);
