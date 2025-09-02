@@ -201,11 +201,12 @@ export class AppComponent extends Component<PropsWithChildren & { children?: Rea
                     <div
                         onClick={() => this.fileInputRef?.current?.click()}
                         className={merge(
-                            'inline-flex justify-center items-center p-6 w-max gap-2 min-h-max rounded-2xl text-3xl border-2 bg-neutral-200 transition-all border-neutral-300 hover:border-fuchsia-600 select-none cursor-pointer'
+                            'inline-flex justify-center items-center p-6 w-max gap-2 min-h-max rounded-2xl text-3xl border-2 bg-neutral-200 transition-all border-neutral-300 hover:border-fuchsia-600 select-none cursor-pointer',
+							'max-w-[90vw]'
                         )}
                     >
-                        <Image />
-                        <p className='text-center min-w-max'>Start by uploading, pasting an image, or dragging it here.</p>
+                        <p className='text-center w-max break-words inline-flex gap-3'>
+							<Image size={32} className='min-w-6 min-h-6'/>Start by uploading, pasting an image, or dragging it here.</p>
                     </div>
                 ) : processing ? (
                     <span className='inline-flex justify-center items-center gap-5 rounded-2xl bg-neutral-200 p-4 px-6 border-2 border-neutral-300'>
