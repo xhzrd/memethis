@@ -110,11 +110,10 @@ export class AppComponent extends Component<PropsWithChildren & { children?: Rea
 		await ffmpeg?.writeFile('input.png', uint8Array);
 		await ffmpeg?.exec([
 			'-i', 'input.png',
-			'-vf', 'scale=iw/2:ih/2,scale=iw*2:ih*2,noise=alls=15:allf=t,gblur=sigma=3,unsharp=5:5:1.0:5:5:0.0',
-			'-q:v', '31',
+			'-vf', 'scale=iw/8:ih/8:flags=neighbor,scale=iw*8:ih*8:flags=neighbor,noise=alls=50:allf=t',
+			'-q:v', '50',
 			this.currentFILEName,
 		]);
-
 
         // convert SharedArrayBuffer -> ArrayBuffer
         const data = await ffmpeg?.readFile(this.currentFILEName);
