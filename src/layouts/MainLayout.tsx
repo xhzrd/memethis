@@ -172,10 +172,11 @@ export class MainLayout extends Component<
 
 				<div className='flex flex-col justify-center items-center gap-0'>
 					<p className='opacity-60 text-lg'>
-						This website is not affiliated with Instagram nor Meta.
+						This site is not affiliated with Instagram or Meta.
 					</p>
 					<p className='opacity-80 text-xl'>
-						&copy; {new Date().getFullYear()} All rights reserved.
+						&copy; {new Date().getFullYear()} xhzrd. All rights
+						reserved.
 					</p>
 				</div>
 
