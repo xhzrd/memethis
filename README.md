@@ -1,69 +1,79 @@
-# React + TypeScript + Vite
+# MemeThis
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+<p align="center">
+  <img src="public/memethis.png" alt="memethis logo" width="128"/>
+</p>
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+MemeThis is a tiny, client-side web app that turns screenshots and images into that intentionally-blurry, low-quality "Instagram-style" meme look using FFmpeg compiled to WebAssembly, Like if the image was reposted more than 2000 times and then got compressed each time. It focuses on a very small surface: upload, drag, or paste an image, hit generate, and get a result, compressed PNG ready to share.
 
-## Expanding the ESLint configuration
+Live demo: https://memethis.netlify.app
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Why this project exists
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Fun, experimental use of FFmpeg in the browser.
+- Extremely small UI, built with Vite + TypeScript + React.
+- Works offline once the FFmpeg wasm bundle is cached by the browser.
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+Key files
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- `src/layouts/MainLayout.tsx` - top-level app UI (now slimmed down; logic moved out).
+- `src/layouts/LogicHelper.ts` - FFmpeg, drag/paste, and image-processing logic.
+- `src/layouts/UploadLayout.tsx` and `src/layouts/PreviewLayout.tsx` - presentational pieces.
+- `public/memethis.png` - project logo used in this README and the app header.
+
+## Getting started
+
+This repo is set up to work nicely with Bun. From the project root:
+
+```bash
+bun install
+bun run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Build for production with Bun:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+bun run build
+bun run preview
 ```
+
+### Alternative package managers
+
+If you prefer pnpm, yarn or npm the same scripts are available:
+
+pnpm
+```bash
+pnpm install
+pnpm dev
+```
+
+yarn
+```bash
+yarn
+yarn dev
+```
+
+npm
+```bash
+npm install
+npm run dev
+```
+
+Development notes
+
+- The heavy lifting happens in `src/layouts/LogicHelper.ts` which initializes the FFmpeg WASM runtime and exposes functions for handling pasted or dropped images and generating the final PNG.
+- The UI is intentionally small and presentational; `UploadLayout` and `PreviewLayout` keep `MainLayout` readable.
+- During development open the browser devtools and check the console for FFmpeg logs (enabled in dev mode).
+
+Contributing
+
+Small PRs welcome. If adding features, try to:
+
+- Keep the UI presentational vs logic-separated.
+- Add a short test or manual verification steps in a PR description.
+
+The project's license is under [Apache 2.0](LICENSE)
+
+Enjoy!

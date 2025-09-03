@@ -1,0 +1,27 @@
+name: CI - Bun Build
+
+on:
+    push:
+        branches: [ main ]
+    pull_request:
+        branches: [ main ]
+
+jobs:
+    build:
+        name: Bun Build
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: 🛎️ Checkout repository
+              uses: actions/checkout@v4
+
+            - name: 🔥 Set up Bun
+              uses: oven-sh/setup-bun@v1
+              with:
+                  bun-version: latest
+
+            - name: 📦 Install dependencies
+              run: bun install
+
+            - name: 🏗️ Build project
+              run: bun run build
