@@ -10,6 +10,7 @@ import { merge } from '../merge';
 import type { DeepKeys, DeepValue } from '../safestate';
 
 import { DragOverlayComponent as DragOverlay } from '../components/DragOverlay';
+import { SliderComponent } from '../components/Slider';
 import { BuildMainLayoutLogic } from './LogicHelper';
 import { PreviewLayout } from './PreviewLayout';
 import { UploadLayout } from './UploadLayout';
@@ -35,6 +36,7 @@ export class MainLayout extends Component<
 			isProcessing: false,
 			commandFileResult: null as string | null,
 		},
+		repeatAmount: 3,
 	};
 
 	// FFmpeg runtime instance and the current output filename.
@@ -74,9 +76,11 @@ export class MainLayout extends Component<
 		// create and wire the logic module that manages ffmpeg and drag/paste
 		this.logic = BuildMainLayoutLogic(this);
 		this.logic.loadFFmpegInstance();
-		window.addEventListener(
-			'paste',
-			this.logic.onPasteImage as EventListener
+		window.addEventListener('paste', (e) =>
+			this.logic?.onPasteImage(
+				e as ClipboardEvent,
+				this.state.repeatAmount
+			)
 		);
 	}
 
@@ -92,24 +96,27 @@ export class MainLayout extends Component<
 	}
 	// Delegated to the logic module. Wrapper kept for compatibility.
 	onPasteImage = (e: ClipboardEvent) =>
-		this.logic?.onPasteImage(e as ClipboardEvent);
+		this.logic?.onPasteImage(e as ClipboardEvent, this.state.repeatAmount);
 
 	// Delegated to the logic module.
 	loadFFmpegInstance = async () => this.logic?.loadFFmpegInstance();
 
 	// Delegated to the logic module.
 	processImageWithFFmpeg = async (source?: string) =>
-		this.logic?.processImageWithFFmpeg(source);
+		this.logic?.processImageWithFFmpeg(this.state.repeatAmount, source);
 
 	// Delegated to logic module for clarity.
 	reset = () => this.logic?.reset();
 
 	// Delegate to the logic module.
 	handleDrop = (e: React.DragEvent<HTMLDivElement>) =>
-		this.logic?.handleDrop({
-			preventDefault: () => e.preventDefault(),
-			dataTransfer: e.dataTransfer,
-		});
+		this.logic?.handleDrop(
+			{
+				preventDefault: () => e.preventDefault(),
+				dataTransfer: e.dataTransfer,
+			},
+			this.state.repeatAmount
+		);
 
 	handleDragOver = (e: React.DragEvent<HTMLDivElement>) =>
 		this.logic?.handleDragOver({
@@ -143,6 +150,22 @@ export class MainLayout extends Component<
 					all of that blurry and pixelated result.
 				</p>
 
+				<span className='my-2' />
+				<div className='flex flex-col justify-start items-center'>
+					<p className='text-2xl font-semibold'>
+						The larger the number, the more pixelated the quality
+						becomes.
+						<br />
+						<b>Compression amount: {this.state.repeatAmount}</b>
+					</p>
+					<SliderComponent
+						min={3}
+						step={5}
+						value={3}
+						onChange={(v) => this.setState({ repeatAmount: v })}
+						max={48}
+					/>
+				</div>
 				<span className='my-2' />
 
 				<UploadLayout

@@ -20,11 +20,14 @@ export function BuildMainLayoutLogic(owner: MainLayout) {
 	// without going through the owner (which would cause recursion).
 	const api: {
 		loadFFmpegInstance?: () => Promise<void>;
-		processImageWithFFmpeg?: (source?: string) => Promise<void>;
+		processImageWithFFmpeg?: (
+			amount?: number,
+			source?: string
+		) => Promise<void>;
 		reset?: () => void;
-		handleDrop?: (e: DragEvent) => void;
+		handleDrop?: (e: DragEvent, amount: number) => void;
 		handleDragOver?: (e: DragEvent) => void;
-		onPasteImage?: (e: ClipboardEvent) => void;
+		onPasteImage?: (e: ClipboardEvent, amount: number) => void;
 	} = {};
 
 	api.loadFFmpegInstance = async () => {
@@ -49,13 +52,19 @@ export function BuildMainLayoutLogic(owner: MainLayout) {
 
 	// Process an image source (data URL) using the FFmpeg instance and set
 	// the resulting blob URL on the owner's state under 'ffmpeg.commandFileResult'.
-	api.processImageWithFFmpeg = async (source?: string) => {
+	// Process an image source (data URL) using FFmpeg with dynamic rescaling & compression
+	api.processImageWithFFmpeg = async (
+		amount: number = 3,
+		source?: string
+	) => {
 		const fileSrc = source ?? owner.state.userInput.uploadedImageSource;
 		if (!fileSrc) return;
+
 		owner.ffmpegFileOutputName = `${Date.now()}-FILE-${Math.random()
 			.toString(36)
 			.substring(2, 15)}.png`;
 		owner.updateStateAtPath('ffmpeg.isProcessing', true);
+
 		const ffmpeg: FFmpeg | null = owner.ffmpegInstance;
 		if (!ffmpeg) {
 			if (import.meta.env.DEV)
@@ -65,41 +74,37 @@ export function BuildMainLayoutLogic(owner: MainLayout) {
 			);
 		}
 
-		const result = await fetch(fileSrc);
-		const fileBlob = await result.blob();
-		const ffmpegCompatiableArray = new Uint8Array(
-			await fileBlob.arrayBuffer()
-		);
-		await ffmpeg.writeFile('input.png', ffmpegCompatiableArray);
-
-		await ffmpeg.exec([
-			'-i',
+		// fetch and write input
+		const response = await fetch(fileSrc);
+		const fileBlob = await response.blob();
+		await ffmpeg.writeFile(
 			'input.png',
-			'-vf',
-			'scale=iw/3:ih/3,scale=iw*3:ih*3,format=yuv420p',
-			'-q:v',
-			'40',
-			'tmp1.jpg',
-		]);
+			new Uint8Array(await fileBlob.arrayBuffer())
+		);
+
+		// calculate scale factor and quality
+		const scaleFactor = 1 / amount;
+		const quality = Math.min(40 + (amount - 3) * 5, 50);
+
+		let prevFile = 'input.png';
+		const tmpFiles: string[] = [];
+
+		// processing loop
+		const output = owner.ffmpegFileOutputName;
+
 		await ffmpeg.exec([
 			'-i',
-			'tmp1.jpg',
+			prevFile,
 			'-vf',
-			'scale=iw/3:ih/3,scale=iw*3:ih*3,format=yuv420p',
+			`scale=iw*${scaleFactor}:ih*${scaleFactor},scale=iw/${scaleFactor}:ih/${scaleFactor},format=yuv420p`,
 			'-q:v',
-			'40',
-			'tmp2.jpg',
-		]);
-		await ffmpeg.exec([
-			'-i',
-			'tmp2.jpg',
-			'-vf',
-			'scale=iw/3:ih/3,scale=iw*3:ih*3,format=yuv420p',
-			'-q:v',
-			'40',
-			owner.ffmpegFileOutputName,
+			quality.toString(),
+			output,
 		]);
 
+		prevFile = output;
+
+		// read final file
 		const resultFileData = await ffmpeg.readFile(
 			owner.ffmpegFileOutputName
 		);
@@ -107,35 +112,29 @@ export function BuildMainLayoutLogic(owner: MainLayout) {
 			typeof resultFileData === 'string'
 				? new TextEncoder().encode(resultFileData)
 				: resultFileData;
-		if (!resultUint8Array) {
-			if (import.meta.env.DEV)
-				return console.error(
-					'Could not get a result of the FFmpeg processing.'
-				);
-			return alert('Failed to get a result for your meme!');
-		}
 
-		const arrayBuffer = resultUint8Array.slice().buffer;
-		if (!arrayBuffer) {
-			if (import.meta.env.DEV)
-				console.error(
-					'Failed to copy the uint8array buffer to an array buffer!'
-				);
-			else alert('Failed to generate your meme!');
+		if (!resultUint8Array) {
+			if (import.meta.env.DEV) console.error('FFmpeg processing failed.');
+			else alert('Failed to get a result for your meme!');
 			owner.updateStateAtPath('ffmpeg.isProcessing', false);
 			return;
 		}
 
+		const arrayBuffer = resultUint8Array.slice().buffer;
 		const url = URL.createObjectURL(
 			new Blob([arrayBuffer], { type: 'image/png' })
 		);
+
+		// cleanup
 		await ffmpeg.deleteFile('input.png');
-		await ffmpeg.deleteFile('tmp1.jpg');
-		await ffmpeg.deleteFile('tmp2.jpg');
+		for (const tmp of tmpFiles) {
+			await ffmpeg.deleteFile(tmp);
+		}
 
 		owner.updateStateAtPath('ffmpeg.commandFileResult', url);
 		owner.updateStateAtPath('ffmpeg.isProcessing', false);
 	};
+
 
 	// Reset owner UI state to initial
 	api.reset = () => {
@@ -151,7 +150,7 @@ export function BuildMainLayoutLogic(owner: MainLayout) {
 		dataTransfer?: DataTransfer | null;
 		preventDefault?: () => void;
 	};
-	api.handleDrop = (e: DragLike) => {
+	api.handleDrop = (e: DragLike, amount: number) => {
 		e.preventDefault?.();
 		owner.updateStateAtPath('userInput.isDragging', false);
 		const file = e.dataTransfer?.files[0];
@@ -165,7 +164,7 @@ export function BuildMainLayoutLogic(owner: MainLayout) {
 			owner.updateStateAtPath('userInput.uploadedImageSource', src);
 			owner.updateStateAtPath('ffmpeg.commandFileResult', null);
 			owner.updateStateAtPath('ffmpeg.isProcessing', false);
-			api.processImageWithFFmpeg!(src);
+			api.processImageWithFFmpeg!(amount, src);
 		};
 		reader.readAsDataURL(file);
 	};
@@ -176,7 +175,7 @@ export function BuildMainLayoutLogic(owner: MainLayout) {
 	};
 
 	// Paste handler — accept the first pasted image and process it.
-	api.onPasteImage = (e: ClipboardEvent) => {
+	api.onPasteImage = (e: ClipboardEvent, amount: number) => {
 		const items = e.clipboardData?.items;
 		if (!items) return;
 		for (const item of items) {
@@ -192,7 +191,7 @@ export function BuildMainLayoutLogic(owner: MainLayout) {
 						'userInput.uploadedImageSource',
 						src
 					);
-					api.processImageWithFFmpeg!(src);
+					api.processImageWithFFmpeg!(amount, src);
 				};
 				reader.readAsDataURL(file);
 				break;
@@ -202,13 +201,19 @@ export function BuildMainLayoutLogic(owner: MainLayout) {
 
 	return api as {
 		loadFFmpegInstance: () => Promise<void>;
-		processImageWithFFmpeg: (source?: string) => Promise<void>;
+		processImageWithFFmpeg: (
+			amount?: number,
+			source?: string
+		) => Promise<void>;
 		reset: () => void;
-		handleDrop: (e: {
-			dataTransfer?: DataTransfer | null;
-			preventDefault?: () => void;
-		}) => void;
+		handleDrop: (
+			e: {
+				dataTransfer?: DataTransfer | null;
+				preventDefault?: () => void;
+			},
+			amount: number
+		) => void;
 		handleDragOver: (e: { preventDefault?: () => void }) => void;
-		onPasteImage: (e: ClipboardEvent) => void;
+		onPasteImage: (e: ClipboardEvent, amount: number) => void;
 	};
 }
