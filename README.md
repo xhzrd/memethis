@@ -8,7 +8,7 @@
 
 MemeThis is a tiny, client-side web app that turns screenshots and images into that intentionally-blurry, low-quality "Instagram-style" meme look using FFmpeg compiled to WebAssembly, Like if the image was reposted more than 2000 times and then got compressed each time. It focuses on a very small surface: upload, drag, or paste an image, hit generate, and get a result, compressed PNG ready to share.
 
-Live demo: https://memethis.netlify.app
+Live demo: https://memethis.xhzrd.cc
 
 Why this project exists
 
